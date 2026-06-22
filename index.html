@@ -201,7 +201,7 @@
             },
             {
                 id: 2,
-                name: "หอสมุดกลาง (อาคาร 24)",
+                name: "ศูนย์วิทยบริการ(หอสมุด) (อาคาร 24)",
                 desc: "สำนักวิทยบริการและเทคโนโลยีสารสนเทศ",
                 coords: [14.9935, 103.1022],
                 icon: "fa-book"
@@ -282,6 +282,37 @@
                 } else {
                     items[index].style.display = 'none';
                 }
+
+                // 5. ระบบดึงตำแหน่งปัจจุบันของผู้ใช้งาน (Geolocation)
+function onLocationFound(e) {
+    const radius = e.accuracy / 2;
+
+    // สร้างไอคอนพิเศษสำหรับตำแหน่งของคุณ (สีฟ้าเด่นๆ)
+    const userIcon = L.divIcon({
+        className: 'user-location-marker',
+        html: '<div style="background-color: #1a73e8; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+
+    // ปักหมุดตำแหน่งผู้ใช้
+    L.marker(e.latlng, {icon: userIcon}).addTo(map)
+        .bindPopup(`คุณกำลังอยู่ตรงนี้ (รัศมีความแม่นยำประมาณ ${radius.toFixed(0)} เมตร)`).openPopup();
+
+    // ร่อนแผนที่ไปหาตำแหน่งผู้ใช้แบบซูมใกล้ๆ
+    map.flyTo(e.latlng, 17, { animate: true, duration: 1.5 });
+}
+
+function onLocationError(e) {
+    alert("ไม่สามารถเข้าถึงตำแหน่งของคุณได้: " + e.message + "\nโปรดตรวจสอบว่าคุณได้เปิด GPS และอนุญาตสิทธิ์การเข้าถึงตำแหน่งบนเบราว์เซอร์แล้ว");
+}
+
+// สั่งให้แผนที่เริ่มค้นหาตำแหน่งผู้ใช้ทันทีเมื่อเปิดเว็บ
+map.on('locationfound', onLocationFound);
+map.on('locationerror', onLocationError);
+
+// เปิดระบบติดตามตำแหน่งความแม่นยำสูง
+map.locate({setView: false, enableHighAccuracy: true});
             });
         }
 
