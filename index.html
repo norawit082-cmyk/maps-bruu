@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maps BRU - ระบบนำทางมหาวิทยาลัยราชภัฏบุรีรัมย์</title>
+    <title>Maps BRU - แผนที่นำทางมหาวิทยาลัยราชภัฏบุรีรัมย์</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -23,7 +24,6 @@
             height: 100%;
             width: 100%;
             overflow: hidden;
-            background-color: #f5f5f5;
         }
 
         #map {
@@ -32,7 +32,7 @@
             z-index: 1;
         }
 
-        /* ปุ่ม 3 ขีดสไตล์มินิมอล (Hamburger Menu) */
+        /* ปุ่ม 3 ขีดสำหรับเปิด/ปิดเมนู */
         #menu-toggle {
             position: absolute;
             top: 15px;
@@ -40,58 +40,42 @@
             z-index: 1001;
             background: white;
             border: none;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 12px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             cursor: pointer;
-            font-size: 20px;
+            font-size: 18px;
             color: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: left 0.3s ease;
         }
 
-        #menu-toggle:hover {
-            background: #f8f9fa;
-            transform: scale(1.05);
-        }
-
-        /* เมนูด้านข้าง (Sidebar) */
+        /* แผงค้นหาและรายชื่ออาคาร (Sidebar) */
         #sidebar {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 360px;
-            height: 100%;
+            top: 10px;
+            left: 10px;
+            width: 340px;
+            max-height: calc(100vh - 40px);
             background: white;
             z-index: 1000;
-            box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateX(-110%); /* ซ่อนไว้ฝั่งซ้าย */
+            transition: transform 0.3s ease;
+            transform: translateX(-360px); /* ซ่อนเมนูออกไปตั้งแต่แรก */
         }
 
+        /* สั่งให้เมนูเด้งกลับเข้ามาเมื่อเปิด */
         #sidebar.active {
             transform: translateX(0);
         }
 
-        /* ส่วนหัวและกล่องค้นหา */
-        .sidebar-header {
-            padding: 24px 20px 15px 20px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .brand-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #1a73e8;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .search-container {
+            padding: 15px;
+            padding-left: 65px; /* เว้นพื้นที่ให้ปุ่ม 3 ขีด */
+            border-bottom: 1px solid #eee;
+            position: relative;
         }
 
         .search-box {
@@ -102,49 +86,59 @@
 
         .search-box input {
             width: 100%;
-            padding: 12px 40px 12px 16px;
-            border: 1px solid #dadce0;
-            border-radius: 24px;
+            padding: 10px 35px 10px 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
             font-size: 14px;
             outline: none;
-            transition: all 0.2s;
-        }
-
-        .search-box input:focus {
-            border-color: #1a73e8;
-            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
         }
 
         .search-box i {
             position: absolute;
-            right: 16px;
-            color: #5f6368;
+            right: 12px;
+            color: #777;
         }
 
-        /* รายการสถานที่ */
+        /* แผงบอกระยะทางและระยะเวลาด้านบนเมนูอาคาร */
+        #navigation-info {
+            background: #e8f0fe;
+            padding: 12px;
+            margin: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #1a73e8;
+            font-size: 13px;
+            display: none; /* จะแสดงเมื่อคลิกเลือกตึกและมีพิกัดเรา */
+        }
+        #navigation-info h5 {
+            color: #1a73e8;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
         .location-list {
             overflow-y: auto;
             flex-grow: 1;
-            padding: 15px;
+            padding: 10px;
         }
 
         .list-title {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 500;
-            color: #5f6368;
-            padding: 0 10px 10px 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #1a73e8;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .location-item {
             display: flex;
             align-items: center;
-            padding: 14px 12px;
+            padding: 12px 10px;
             cursor: pointer;
-            border-radius: 12px;
-            transition: all 0.2s;
-            margin-bottom: 4px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f9f9f9;
         }
 
         .location-item:hover {
@@ -152,15 +146,15 @@
         }
 
         .item-icon {
-            width: 40px;
-            height: 40px;
+            width: 35px;
+            height: 35px;
             background: #e8f0fe;
             color: #1a73e8;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 14px;
+            margin-right: 12px;
             font-size: 16px;
             flex-shrink: 0;
         }
@@ -168,89 +162,16 @@
         .item-info h4 {
             font-size: 14px;
             font-weight: 500;
-            color: #202124;
+            color: #333;
             margin-bottom: 2px;
         }
 
         .item-info p {
             font-size: 12px;
-            color: #5f6368;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 240px;
+            color: #666;
         }
 
-        /* 📱 ป๊อปอัพแผงนำทางด้านล่าง (ถอดดีไซน์มาจาก Google Maps มือถือเป๊ะๆ) */
-        #navigation-panel {
-            position: absolute;
-            bottom: -150px; /* ซ่อนไว้ด้านล่างหน้าจอ */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 450px;
-            background: white;
-            z-index: 1005;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            padding: 20px;
-            transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        #navigation-panel.active {
-            bottom: 24px; /* เด้งขึ้นมาโชว์ */
-        }
-
-        .nav-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .nav-time-dist {
-            font-size: 22px;
-            font-weight: 600;
-            color: #1e8e3e; /* สีเขียวสไตล์กูเกิลแมพ */
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-time-dist .dist-label {
-            color: #5f6368;
-            font-size: 15px;
-            font-weight: 400;
-        }
-
-        .nav-target-name {
-            font-size: 13px;
-            color: #3c4043;
-            font-weight: 400;
-        }
-
-        .nav-close-btn {
-            background: #f1f3f4;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            color: #3c4043;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-
-        .nav-close-btn:hover {
-            background: #e8eaed;
-        }
-
-        /* ซ่อนกล่องคำอธิบายดั้งเดิมของปลั๊กอิน */
+        /* ซ่อนแผงคำแนะนำทิศทางที่เป็นตารางน่าเกลียดๆ ของปลั๊กอินดั้งเดิมออกไป */
         .leaflet-routing-container {
             display: none !important;
         }
@@ -263,44 +184,37 @@
     </button>
 
     <div id="sidebar">
-        <div class="sidebar-header">
-            <div class="brand-title">
-                <i class="fas fa-map-marked-alt"></i> Maps BRU Navigation
-            </div>
+        <div class="search-container">
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="ค้นหาอาคารเรียนใน มรภ.บุรีรัมย์..." onkeyup="searchLocation()">
+                <input type="text" id="search-input" placeholder="ค้นหาอาคาร ใน มรภ.บุรีรัมย์..." onkeyup="searchLocation()">
                 <i class="fas fa-search"></i>
             </div>
         </div>
-        <div class="location-list" id="location-list">
-            <div class="list-title">อาคารและตึกเรียนแนะนำ</div>
-            </div>
-    </div>
 
-    <div id="navigation-panel">
-        <div class="nav-meta">
-            <div class="nav-time-dist">
-                <span id="panel-time">0 นาที</span>
-                <span class="dist-label" id="panel-distance">(0 ม.)</span>
-            </div>
-            <div class="nav-target-name" id="panel-target">กำลังนำทางไป...</div>
+        <div id="navigation-info">
+            <h5><i class="fas fa-route"></i> กำลังนำทางไป...</h5>
+            <p id="route-stats">กำลังคำนวณระยะทาง...</p>
         </div>
-        <button class="nav-close-btn" onclick="cancelRouting()" title="ยกเลิกการนำทาง">
-            <i class="fas fa-times"></i>
-        </button>
+
+        <div class="location-list" id="location-list">
+            <div class="list-title">
+                <i class="fas fa-university"></i> สถานที่แนะนําใน มรภ.บุรีรัมย์
+            </div>
+            </div>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <script>
+        // ตัวแปรเก็บพิกัดของผู้ใช้งาน (พิกัดเริ่มต้นตั้งเป็นค่าว่างไว้)
         let userLatLng = null; 
-        let routingControl = null;
-        let userMarker = null;
+        let routingControl = null; // ตัวควบคุมเส้นนำทางสีฟ้า
 
-        // ข้อมูลพิกัดสถานที่ภายใน มรภ.บุรีรัมย์
+        // 1. ข้อมูลสถานที่ภายใน มรภ.บุรีรัมย์
         const locations = [
             { id: 1, name: "อาคารนวัตกรรมปัญญา (อาคาร 25)", desc: "อาคารเรียนรวมและสำนักงานอธิการบดี", coords: [14.9928, 103.1015], icon: "fa-building" },
             { id: 2, name: "ศูนย์วิทยบริการ(หอสมุด) (อาคาร 24)", desc: "สำนักวิทยบริการและเทคโนโลยีสารสนเทศ", coords: [14.9935, 103.1022], icon: "fa-book-open" },
@@ -309,28 +223,26 @@
             { id: 5, name: "คณะวิทยาการจัดการ", desc: "อาคารเรียนสาขาบริหารธุรกิจและการบัญชี", coords: [14.9915, 103.1025], icon: "fa-chart-pie" }
         ];
 
-        // ตั้งค่าแผนที่เริ่มต้นไปที่จุดศูนย์กลางของ มหาลัย
-        const map = L.map('map', { zoomControl: false }).setView([14.9928, 103.1015], 16);
+        // 2. ตั้งค่าแผนที่เริ่มต้น (ศูนย์กลาง มรภ.บุรีรัมย์)
+        const map = L.map('map').setView([14.9928, 103.1015], 16);
 
-        // ดึงเลเยอร์แผนที่มาตรฐาน
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
+            attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // ย้ายปุ่มซูมไปไว้มุมขวาล่างเพื่อความสวยงามหลบ Sidebar
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-        // สร้างรายการใน Sidebar
+        // 3. ฟังก์ชันสร้างรายชื่ออาคารและหมุดเริ่มต้น
         function initApp() {
             const listContainer = document.getElementById('location-list');
+            
             locations.forEach(loc => {
-                // ปักหมุดอาคารไว้ถาวร
-                L.marker(loc.coords).addTo(map).bindPopup(`<b>${loc.name}</b><br>${loc.desc}`);
+                // ปักหมุดตึกทิ้งไว้บนแผนที่
+                const marker = L.marker(loc.coords).addTo(map);
+                marker.bindPopup(`<b>${loc.name}</b><br>${loc.desc}`);
 
-                // แทรกชิ้นส่วนรายชื่อเข้าไปในแถบข้าง
+                // สร้างแถบรายชื่อด้านซ้าย
                 const item = document.createElement('div');
                 item.className = 'location-item';
-                item.onclick = () => startRouting(loc.coords, loc.name);
+                item.onclick = () => focusLocation(loc.coords, loc.name, loc.desc);
                 item.innerHTML = `
                     <div class="item-icon"><i class="fas ${loc.icon}"></i></div>
                     <div class="item-info">
@@ -342,90 +254,91 @@
             });
         }
 
-        // ระบบเปิด/ปิดเมนู 3 ขีด
+        // ฟังก์ชันเมื่อคลิกอาคาร -> จะเริ่มสร้างเส้นสีฟ้านำทางจากจุดที่เราอยู่ไปหาตึกนั้น
+        function focusLocation(targetCoords, name, desc) {
+            map.flyTo(targetCoords, 17, { animate: true, duration: 1.2 });
+            
+            L.popup()
+                .setLatLng(targetCoords)
+                .setContent(`<b>${name}</b><br>${desc}`)
+                .openOn(map);
+
+            // 🌟 จุดสำคัญ: สร้างเส้นสีฟ้านำทางถ้าระบบดึงตำแหน่ง GPS ของเรามาได้แล้ว
+            if (userLatLng) {
+                // ถ้ามีเส้นเก่าค้างอยู่บนแผนที่ให้ลบทิ้งก่อน
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                }
+
+                // สั่งลากเส้นนำทางตามถนนจริง (OSM Routing)
+                routingControl = L.Routing.control({
+                    waypoints: [
+                        L.latLng(userLatLng.lat, userLatLng.lng), // จุดเริ่มต้น (ตัวเรา)
+                        L.latLng(targetCoords[0], targetCoords[1]) // จุดปลายทาง (ตึกที่เลือก)
+                    ],
+                    router: L.Routing.osrmv1({
+                        serviceUrl: `https://router.project-osrm.org/route/v1` // เซิร์ฟเวอร์ลากเส้นฟรีระดับโลก
+                    }),
+                    lineOptions: {
+                        styles: [{ color: '#1a73e8', weight: 6, opacity: 0.8 }] // ดีไซน์เส้นสีฟ้านำทางหนาๆ เด่นๆ
+                    },
+                    createMarker: function() { return null; } // ไม่สร้างหมุดซ้ำซ้อน เพราะเราปักหมุดไว้แล้ว
+                }).addTo(map);
+
+                // เมื่อคำนวณเส้นทางเสร็จ ให้ดึงข้อมูลระยะทางและเวลามาแสดงผล
+                routingControl.on('routesfound', function(e) {
+                    const routes = e.routes;
+                    const summary = routes[0].summary;
+                    
+                    // ระยะทางรวม (เมตร)
+                    const distanceMeters = summary.totalDistance; 
+                    // เวลาเดินทางโดยประมาณ (วินาที เปลี่ยนเป็นนาที)
+                    const timeMinutes = Math.round(summary.totalTime / 60); 
+
+                    // แปลงหน่วยระยะทาง: ถ้าเกิน 1,000 เมตร ให้โชว์เป็นกิโลเมตร (กม.) ถ้าต่ำกว่าโชว์เป็นเมตร (ม.)
+                    let distanceText = "";
+                    if (distanceMeters >= 1000) {
+                        distanceText = (distanceMeters / 1000).toFixed(2) + " กิโลเมตร";
+                    } else {
+                        distanceText = distanceMeters.toFixed(0) + " เมตร";
+                    }
+
+                    // สั่งให้แผงแจ้งระยะทางด้านซ้ายแสดงผลข้อความขึ้นมา
+                    const infoBox = document.getElementById('navigation-info');
+                    const statsText = document.getElementById('route-stats');
+                    infoBox.style.display = 'block';
+                    statsText.innerHTML = `เป้าหมาย: <b>${name}</b><br>ระยะทางที่เหลือ: <b>${distanceText}</b><br>ใช้เวลาเดินประมาณ: <b>${timeMinutes || 1} นาที</b>`;
+                });
+
+            } else {
+                // กรณีเปิดในคอมพิวเตอร์ที่ไม่มี GPS หรือยังไม่ได้อนุญาตสิทธิ์ตำแหน่ง
+                alert(`ปักหมุดตึกเรียบร้อย! แต่หากต้องการใช้งานระบบ "ลากเส้นนำทางสีฟ้า" และ "คำนวณระยะทางกิโลเมตร" โปรดเปิดใช้งานระบบเว็บนี้ผ่านโทรศัพท์มือถือและกดยอมรับสิทธิ์อนุญาต GPS ด้วยนะครับ`);
+            }
+            
+            // หากเปิดบนมือถือจอกว้างไม่มาก พอกดเลือกตึกแล้วให้หุบเมนูไปอัตโนมัติ จะได้เห็นเส้นทางเต็มจอ
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
+
+        // 4. ระบบเปิด/ปิดเมนู 3 ขีด
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('menu-toggle');
             
             sidebar.classList.toggle('active');
-            const icon = toggleBtn.querySelector('i');
             
+            const icon = toggleBtn.querySelector('i');
             if (sidebar.classList.contains('active')) {
                 icon.className = 'fas fa-times';
-                toggleBtn.style.left = '375px';
+                toggleBtn.style.left = '365px';
             } else {
                 icon.className = 'fas fa-bars';
                 toggleBtn.style.left = '15px';
             }
         }
 
-        // ระบบลากเส้นนำทางสีน้ำเงินและคำนวณระยะทาง
-        function startRouting(targetCoords, targetName) {
-            // ปิดเมนูด้านข้างอัตโนมัติเพื่อให้เห็นแผนที่ชัดเจน
-            if (document.getElementById('sidebar').classList.contains('active')) {
-                toggleSidebar();
-            }
-
-            // เช็คว่ามือถือจับสัญญาณ GPS ได้หรือยัง
-            if (!userLatLng) {
-                map.flyTo(targetCoords, 17, { animate: true });
-                alert("ระบบกำลังค้นหา GPS ของคุณ หากเปิดสิทธิ์ตำแหน่งแล้ว รอสักครู่ระบบจะลากเส้นนำทางให้อัตโนมัติครับ");
-                return;
-            }
-
-            // ลบเส้นเก่าวาดใหม่
-            if (routingControl) {
-                map.removeControl(routingControl);
-            }
-
-            // เปิดใช้งานโมดูลค้นหาเส้นทางตามทางเดินจริง
-            routingControl = L.Routing.control({
-                waypoints: [
-                    L.latLng(userLatLng.lat, userLatLng.lng),
-                    L.latLng(targetCoords[0], targetCoords[1])
-                ],
-                router: L.Routing.osrmv1({
-                    serviceUrl: `https://router.project-osrm.org/route/v1`
-                }),
-                lineOptions: {
-                    styles: [{ color: '#1a73e8', weight: 6, opacity: 0.85 }]
-                },
-                createMarker: function() { return null; } 
-            }).addTo(map);
-
-            // ดึงผลลัพธ์เมตร/กิโลเมตร มาขึ้นโชว์บนการ์ดด้านล่าง
-            routingControl.on('routesfound', function(e) {
-                const summary = e.routes[0].summary;
-                const distance = summary.totalDistance; // หน่วยเป็นเมตร
-                const time = Math.round(summary.totalTime / 60); // หน่วยนาที
-
-                let distStr = "";
-                if (distance >= 1000) {
-                    distStr = `(${(distance / 1000).toFixed(1)} กม.)`;
-                } else {
-                    distStr = `(${distance.toFixed(0)} ม.)`;
-                }
-
-                // อัปเดตข้อมูลใส่แผงการ์ดข้างล่างแบบ Google Maps 
-                document.getElementById('panel-time').innerText = `${time || 1} นาที`;
-                document.getElementById('panel-distance').innerText = distStr;
-                document.getElementById('panel-target').innerHTML = `นำทางไป: <b>${targetName}</b>`;
-                
-                // สั่งให้การ์ดเลื่อนเด้งขึ้นมาจากขอบจอ
-                document.getElementById('navigation-panel').classList.add('active');
-            });
-        }
-
-        // ยกเลิกการนำทาง เคลียร์เส้นและหุบการ์ดลง
-        function cancelRouting() {
-            if (routingControl) {
-                map.removeControl(routingControl);
-                routingControl = null;
-            }
-            document.getElementById('navigation-panel').classList.remove('active');
-        }
-
-        // ระบบค้นหาอาคาร
+        // 5. ระบบค้นหาอาคารเรียน
         function searchLocation() {
             const input = document.getElementById('search-input').value.toLowerCase();
             const items = document.getElementsByClassName('location-item');
@@ -439,34 +352,46 @@
             });
         }
 
-        // จับสัญญาณ GPS ตำแหน่งปัจจุบันและอัปเดตเรียลไทม์เวลาเราเดิน
-        function onLocationFound(e) {
-            userLatLng = e.latlng;
+        // 6. ระบบ GPS ดึงตำแหน่งปัจจุบันและอัปเดตเมื่อเดินเคลื่อนที่
+        let userMarker = null;
 
+        function onLocationFound(e) {
+            userLatLng = e.latlng; // บันทึกพิกัดจริงล่าสุดของคุณลงในระบบคีย์เวิร์ดเว็บ
+
+            // ดีไซน์หมุดสีฟ้ากระพริบสวยๆ แทนตัวผู้ใช้
             const userIcon = L.divIcon({
-                className: 'user-marker',
-                html: '<div style="background-color: #1a73e8; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(26,115,232,0.6);"></div>',
+                className: 'user-location-marker',
+                html: '<div style="background-color: #1a73e8; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(26,115,232,0.8);"></div>',
                 iconSize: [18, 18],
                 iconAnchor: [9, 9]
             });
 
+            // หากเพิ่งเคยเจอตำแหน่งครั้งแรกให้ปักหมุดลงแผนที่ใหม่
             if (!userMarker) {
-                userMarker = L.marker(e.latlng, { icon: userIcon }).addTo(map);
+                userMarker = L.marker(e.latlng, {icon: userIcon}).addTo(map);
+                userMarker.bindPopup("คุณอยู่ตรงนี้").openPopup();
+                map.setView(e.latlng, 17); // แพนกล้องหาเราตอนเปิดแอปครั้งแรก
             } else {
-                userMarker.setLatLng(e.latlng); // ให้หมุดเคลื่อนไหวตามจุดเดินจริง
+                // หากกำลังเดินเคลื่อนที่ ให้หมุดสีฟ้าเลื่อนขยับตามพิกัดดาวเทียมปัจจุบันที่เปลี่ยนไปโดยไม่ต้องปักซ้ำซ้อน
+                userMarker.setLatLng(e.latlng);
             }
         }
 
         function onLocationError(e) {
-            console.log("GPS ค้นหาตำแหน่งไม่สำเร็จ: " + e.message);
+            console.log("สัญญาณ GPS ดึงขัดข้องชั่วคราว: " + e.message);
         }
 
         map.on('locationfound', onLocationFound);
         map.on('locationerror', onLocationError);
 
-        // เฝ้าติดตาม GPS ความแม่นยำสูง (watch: true)
-        map.locate({ setView: false, watch: true, enableHighAccuracy: true });
+        // คอยอัปเดตตำแหน่ง GPS ตลอดเวลาแบบ High Accuracy เมื่อมีการเดินเคลื่อนที่ (watch: true)
+        map.locate({
+            setView: false, 
+            watch: true, 
+            enableHighAccuracy: true
+        });
 
+        // เริ่มต้นรันแอปพลิเคชัน
         initApp();
     </script>
 </body>
