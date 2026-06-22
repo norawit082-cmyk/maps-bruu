@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maps BRU - แผนที่มหาวิทยาลัยราชภัฏบุรีรัมย์</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* Layout Container */
+        #app-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Map Element */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Search & Sidebar Style (Google Maps Look) */
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            width: 360px;
+        }
+
+        .search-container img {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+        }
+
+        .search-container input {
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 16px;
+            padding: 5px;
+        }
+
+        .search-container button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #5f6368;
+            font-size: 18px;
+            margin-left: 10px;
+        }
+
+        /* Sidebar Locations List */
+        .sidebar {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            z-index: 1000;
+            background: white;
+            width: 360px;
+            max-height: calc(100% - 120px);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            font-weight: 600;
+            border-bottom: 1px solid #eee;
+            background-color: #f8f9fa;
+            color: #1a73e8;
+        }
+
+        .location-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .location-item:hover {
+            background-color: #f1f3f4;
+        }
+
+        .location-icon {
+            background: #e8f0fe;
+            color: #1a73e8;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .location-info h4 {
+            font-size: 15px;
+            color: #202124;
+            margin-bottom: 2px;
+        }
+
+        .location-info p {
+            font-size: 13px;
+            color: #5f6368;
+        }
+
+        /* Responsive Mobile */
+        @media (max-width: 480px) {
+            .search-container, .sidebar {
+                width: calc(100% - 40px);
+                left: 20px;
+            }
+            .sidebar {
+                max-height: 40%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- Search Bar -->
+        <div class="search-container">
+            <!-- สมมติใช้ไอคอนทดแทน หรือใส่ Logo ของ มรภ.บุรีรัมย์ ได้ตรงนี้ -->
+            <i class="fa-solid fa-map-location-dot" style="color: #1a73e8; font-size: 24px; margin-right: 12px;"></i>
+            <input type="text" id="searchInput" placeholder="ค้นหาอาคาร หรือสถานที่ใน Maps BRU..." onkeyup="filterLocations()">
+            <button id="searchBtn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-university"></i> สถานที่แนะนำใน มรภ.บุรีรัมย์
+            </div>
+            <div id="locationList">
+                <!-- รายชื่อสถานที่เสมือน จะถูกใส่โดย JavaScript -->
+            </div>
+        </div>
+
+        <!-- Map container -->
+        <div id="map"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // 1. ตั้งค่าพิกัดเริ่มต้น (ละติจูด, ลองจิจูด ของ มหาวิทยาลัยราชภัฏบุรีรัมย์)
+        const bruCoordinates = [14.9926, 103.1017]; 
+        
+        // สร้างแผนที่
+        const map = L.map('map').setView(bruCoordinates, 17);
+
+        // โหลดภาพแผนที่จาก OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Maps BRU'
+        }).addTo(map);
+
+        // 2. ข้อมูลสถานที่ภายใน มรภ.บุรีรัมย์ (พิกัดโดยประมาณสำหรับการทดสอบ)
+        const locations = [
+            {
+                id: 1,
+                name: "อาคารนวัตกรรมปัญญา (อาคาร 25)",
+                desc: "อาคารเรียนรวมและสำนักงานอธิการบดี",
+                coords: [14.9928, 103.1015],
+                icon: "fa-building"
+            },
+            {
+                id: 2,
+                name: "หอสมุดกลาง (อาคาร 24)",
+                desc: "สำนักวิทยบริการและเทคโนโลยีสารสนเทศ",
+                coords: [14.9935, 103.1022],
+                icon: "fa-book"
+            },
+            {
+                id: 3,
+                name: "โรงยิมเนเซียม / สนามกีฬากลาง",
+                desc: "พื้นที่กิจกรรมและกีฬาในร่ม",
+                coords: [14.9915, 103.1008],
+                icon: "fa-dumbbell"
+            },
+            {
+                id: 4,
+                name: "คณะวิทยาศาสตร์",
+                desc: "อาคารเรียนและห้องปฏิบัติการวิทยาศาสตร์",
+                coords: [14.9932, 103.1005],
+                icon: "fa-flask"
+            },
+            {
+                id: 5,
+                name: "คณะวิทยาการจัดการ",
+                desc: "อาคารเรียนสาขาบริหารธุรกิจและการบัญชี",
+                coords: [14.9922, 103.1028],
+                icon: "fa-chart-pie"
+            }
+        ];
+
+        // เก็บตัวแปร Markers ไว้สำหรับอ้างอิงค้นหา
+        const markersLayer = L.layerGroup().addTo(map);
+
+        // 3. ฟังก์ชันแสดงจุดบนแผนที่และสร้างรายการใน Sidebar
+        function initApp() {
+            const listContainer = document.getElementById('locationList');
+            listContainer.innerHTML = ''; // เคลียร์เก่า
+
+            locations.forEach(loc => {
+                // เพิ่ม Marker ลงแผนที่
+                const marker = L.marker(loc.coords).addTo(markersLayer);
+                marker.bindPopup(`<b>${loc.name}</b><br>${loc.desc}`);
+
+                // เพิ่มรายชื่อใน Sidebar
+                const item = document.createElement('div');
+                item.className = 'location-item';
+                item.onclick = () => focusLocation(loc.coords, marker);
+                
+                item.innerHTML = `
+                    <div class="location-icon">
+                        <i class="fa-solid ${loc.icon}"></i>
+                    </div>
+                    <div class="location-info">
+                        <h4>${loc.name}</h4>
+                        <p>${loc.desc}</p>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        // ฟังก์ชันเมื่อคลิกเลือกสถานที่
+        function focusLocation(coords, marker) {
+            map.flyTo(coords, 19, {
+                animate: true,
+                duration: 1.5
+            });
+            setTimeout(() => {
+                marker.openPopup();
+            }, 1500);
+        }
+
+        // 4. ระบบค้นหา (Search Filter)
+        function filterLocations() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const items = document.getElementsByClassName('location-item');
+            
+            locations.forEach((loc, index) => {
+                if (loc.name.toLowerCase().includes(searchText) || loc.desc.toLowerCase().includes(searchText)) {
+                    items[index].style.display = 'flex';
+                } else {
+                    items[index].style.display = 'none';
+                }
+            });
+        }
+
+        // รันแอปพลิเคชันตอนเริ่มต้น
+        initApp();
+    </script>
+</body>
+</html>
