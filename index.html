@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maps BRU - แผนที่มหาวิทยาลัยราชภัฏบุรีรัมย์</title>
+    <title>Maps BRU - แผนที่นำทางมหาวิทยาลัยราชภัฏบุรีรัมย์</title>
 
-    <!-- 1. Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <!-- 2. Google Fonts & FontAwesome Icons -->
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -62,17 +63,17 @@
             display: flex;
             flex-direction: column;
             transition: transform 0.3s ease;
-            transform: translateX(-360px); /* ซ่อนเมนูออกไปทางซ้ายตั้งแต่แรก */
+            transform: translateX(-360px); /* ซ่อนเมนูออกไปตั้งแต่แรก */
         }
 
-        /* คลาสสำหรับสั่งให้เมนูเด้งกลับเข้ามาเมื่อกดปุ่ม */
+        /* สั่งให้เมนูเด้งกลับเข้ามาเมื่อเปิด */
         #sidebar.active {
             transform: translateX(0);
         }
 
         .search-container {
             padding: 15px;
-            padding-left: 65px; /* เว้นที่ให้ปุ่ม 3 ขีด */
+            padding-left: 65px; /* เว้นพื้นที่ให้ปุ่ม 3 ขีด */
             border-bottom: 1px solid #eee;
             position: relative;
         }
@@ -96,6 +97,22 @@
             position: absolute;
             right: 12px;
             color: #777;
+        }
+
+        /* แผงบอกระยะทางและระยะเวลาด้านบนเมนูอาคาร */
+        #navigation-info {
+            background: #e8f0fe;
+            padding: 12px;
+            margin: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #1a73e8;
+            font-size: 13px;
+            display: none; /* จะแสดงเมื่อคลิกเลือกตึกและมีพิกัดเรา */
+        }
+        #navigation-info h5 {
+            color: #1a73e8;
+            font-weight: 600;
+            margin-bottom: 3px;
         }
 
         .location-list {
@@ -153,98 +170,76 @@
             font-size: 12px;
             color: #666;
         }
+
+        /* ซ่อนแผงคำแนะนำทิศทางที่เป็นตารางน่าเกลียดๆ ของปลั๊กอินดั้งเดิมออกไป */
+        .leaflet-routing-container {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
 
-    <!-- ปุ่ม 3 ขีดสำหรับเปิด/ปิดเมนู -->
     <button id="menu-toggle" onclick="toggleSidebar()">
         <i class="fas fa-bars"></i>
     </button>
 
-    <!-- แผงค้นหาและรายชื่ออาคาร -->
     <div id="sidebar">
         <div class="search-container">
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="ค้นหาอาคาร หรือสถานที่ใน Maps BRU..." onkeyup="searchLocation()">
+                <input type="text" id="search-input" placeholder="ค้นหาอาคาร ใน มรภ.บุรีรัมย์..." onkeyup="searchLocation()">
                 <i class="fas fa-search"></i>
             </div>
         </div>
+
+        <div id="navigation-info">
+            <h5><i class="fas fa-route"></i> กำลังนำทางไป...</h5>
+            <p id="route-stats">กำลังคำนวณระยะทาง...</p>
+        </div>
+
         <div class="location-list" id="location-list">
             <div class="list-title">
-                <i class="fas fa-university"></i> สถานที่แนะนำใน มรภ.บุรีรัมย์
+                <i class="fas fa-university"></i> สถานที่แนะนําใน มรภ.บุรีรัมย์
             </div>
-            <!-- รายชื่อสถานที่ต่างๆ จะถูกใส่ผ่าน JavaScript -->
-        </div>
+            </div>
     </div>
 
-    <!-- พื้นที่แสดงแผนที่ -->
     <div id="map"></div>
 
-    <!-- 3. Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <script>
-        // 1. ข้อมูลสถานที่ภายใน มรภ.บุรีรัมย์ (สามารถเพิ่ม/แก้ไขตึกตรงนี้ได้เลย)
+        // ตัวแปรเก็บพิกัดของผู้ใช้งาน (พิกัดเริ่มต้นตั้งเป็นค่าว่างไว้)
+        let userLatLng = null; 
+        let routingControl = null; // ตัวควบคุมเส้นนำทางสีฟ้า
+
+        // 1. ข้อมูลสถานที่ภายใน มรภ.บุรีรัมย์
         const locations = [
-            {
-                id: 1,
-                name: "อาคารนวัตกรรมปัญญา (อาคาร 25)",
-                desc: "อาคารเรียนรวมและสำนักงานอธิการบดี",
-                coords: [14.9928, 103.1015],
-                icon: "fa-building"
-            },
-            {
-                id: 2,
-                name: "ศูนย์วิทยบริการ(หอสมุด) (อาคาร 24)",
-                desc: "สำนักวิทยบริการและเทคโนโลยีสารสนเทศ",
-                coords: [14.9935, 103.1022],
-                icon: "fa-book-open"
-            },
-            {
-                id: 3,
-                name: "โรงยิมเนเซียม / สนามกีฬากลาง",
-                desc: "พื้นที่กิจกรรมและกีฬาในร่ม",
-                coords: [14.9945, 103.1010],
-                icon: "fa-dumbbell"
-            },
-            {
-                id: 4,
-                name: "คณะวิทยาศาสตร์",
-                desc: "อาคารเรียนและห้องปฏิบัติการวิทยาศาสตร์",
-                coords: [14.9920, 103.1008],
-                icon: "fa-flask"
-            },
-            {
-                id: 5,
-                name: "คณะวิทยาการจัดการ",
-                desc: "อาคารเรียนสาขาบริหารธุรกิจและการบัญชี",
-                coords: [14.9915, 103.1025],
-                icon: "fa-chart-pie"
-            }
+            { id: 1, name: "อาคารนวัตกรรมปัญญา (อาคาร 25)", desc: "อาคารเรียนรวมและสำนักงานอธิการบดี", coords: [14.9928, 103.1015], icon: "fa-building" },
+            { id: 2, name: "ศูนย์วิทยบริการ(หอสมุด) (อาคาร 24)", desc: "สำนักวิทยบริการและเทคโนโลยีสารสนเทศ", coords: [14.9935, 103.1022], icon: "fa-book-open" },
+            { id: 3, name: "โรงยิมเนเซียม / สนามกีฬากลาง", desc: "พื้นที่กิจกรรมและกีฬาในร่ม", coords: [14.9945, 103.1010], icon: "fa-dumbbell" },
+            { id: 4, name: "คณะวิทยาศาสตร์", desc: "อาคารเรียนและห้องปฏิบัติการวิทยาศาสตร์", coords: [14.9920, 103.1008], icon: "fa-flask" },
+            { id: 5, name: "คณะวิทยาการจัดการ", desc: "อาคารเรียนสาขาบริหารธุรกิจและการบัญชี", coords: [14.9915, 103.1025], icon: "fa-chart-pie" }
         ];
 
-        // 2. ตั้งค่าแผนที่เริ่มต้น (พิกัด มรภ.บุรีรัมย์)
+        // 2. ตั้งค่าแผนที่เริ่มต้น (ศูนย์กลาง มรภ.บุรีรัมย์)
         const map = L.map('map').setView([14.9928, 103.1015], 16);
 
-        // ใส่แผนที่พื้นหลังของ OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // เก็บหมุดทั้งหมดไว้กลุ่มเดียวกันเพื่อความง่ายในการควบคุม
-        const markersGroup = L.layerGroup().addTo(map);
-
-        // 3. ฟังก์ชันสร้างรายชื่ออาคารและปักหมุดเริ่มต้น
+        // 3. ฟังก์ชันสร้างรายชื่ออาคารและหมุดเริ่มต้น
         function initApp() {
             const listContainer = document.getElementById('location-list');
             
             locations.forEach(loc => {
-                // ปักหมุดลงแผนที่
-                const marker = L.marker(loc.coords).addTo(markersGroup);
+                // ปักหมุดตึกทิ้งไว้บนแผนที่
+                const marker = L.marker(loc.coords).addTo(map);
                 marker.bindPopup(`<b>${loc.name}</b><br>${loc.desc}`);
 
-                // สร้างรายชื่อในแผงเมนูข้างซ้าย
+                // สร้างแถบรายชื่อด้านซ้าย
                 const item = document.createElement('div');
                 item.className = 'location-item';
                 item.onclick = () => focusLocation(loc.coords, loc.name, loc.desc);
@@ -259,15 +254,68 @@
             });
         }
 
-        // ฟังก์ชันเมื่อคลิกรายชื่อ ให้แผนที่ร่อนไปหาตึกนั้นๆ
-        function focusLocation(coords, name, desc) {
-            map.flyTo(coords, 18, { animate: true, duration: 1.5 });
+        // ฟังก์ชันเมื่อคลิกอาคาร -> จะเริ่มสร้างเส้นสีฟ้านำทางจากจุดที่เราอยู่ไปหาตึกนั้น
+        function focusLocation(targetCoords, name, desc) {
+            map.flyTo(targetCoords, 17, { animate: true, duration: 1.2 });
+            
             L.popup()
-                .setLatLng(coords)
+                .setLatLng(targetCoords)
                 .setContent(`<b>${name}</b><br>${desc}`)
                 .openOn(map);
+
+            // 🌟 จุดสำคัญ: สร้างเส้นสีฟ้านำทางถ้าระบบดึงตำแหน่ง GPS ของเรามาได้แล้ว
+            if (userLatLng) {
+                // ถ้ามีเส้นเก่าค้างอยู่บนแผนที่ให้ลบทิ้งก่อน
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                }
+
+                // สั่งลากเส้นนำทางตามถนนจริง (OSM Routing)
+                routingControl = L.Routing.control({
+                    waypoints: [
+                        L.latLng(userLatLng.lat, userLatLng.lng), // จุดเริ่มต้น (ตัวเรา)
+                        L.latLng(targetCoords[0], targetCoords[1]) // จุดปลายทาง (ตึกที่เลือก)
+                    ],
+                    router: L.Routing.osrmv1({
+                        serviceUrl: `https://router.project-osrm.org/route/v1` // เซิร์ฟเวอร์ลากเส้นฟรีระดับโลก
+                    }),
+                    lineOptions: {
+                        styles: [{ color: '#1a73e8', weight: 6, opacity: 0.8 }] // ดีไซน์เส้นสีฟ้านำทางหนาๆ เด่นๆ
+                    },
+                    createMarker: function() { return null; } // ไม่สร้างหมุดซ้ำซ้อน เพราะเราปักหมุดไว้แล้ว
+                }).addTo(map);
+
+                // เมื่อคำนวณเส้นทางเสร็จ ให้ดึงข้อมูลระยะทางและเวลามาแสดงผล
+                routingControl.on('routesfound', function(e) {
+                    const routes = e.routes;
+                    const summary = routes[0].summary;
+                    
+                    // ระยะทางรวม (เมตร)
+                    const distanceMeters = summary.totalDistance; 
+                    // เวลาเดินทางโดยประมาณ (วินาที เปลี่ยนเป็นนาที)
+                    const timeMinutes = Math.round(summary.totalTime / 60); 
+
+                    // แปลงหน่วยระยะทาง: ถ้าเกิน 1,000 เมตร ให้โชว์เป็นกิโลเมตร (กม.) ถ้าต่ำกว่าโชว์เป็นเมตร (ม.)
+                    let distanceText = "";
+                    if (distanceMeters >= 1000) {
+                        distanceText = (distanceMeters / 1000).toFixed(2) + " กิโลเมตร";
+                    } else {
+                        distanceText = distanceMeters.toFixed(0) + " เมตร";
+                    }
+
+                    // สั่งให้แผงแจ้งระยะทางด้านซ้ายแสดงผลข้อความขึ้นมา
+                    const infoBox = document.getElementById('navigation-info');
+                    const statsText = document.getElementById('route-stats');
+                    infoBox.style.display = 'block';
+                    statsText.innerHTML = `เป้าหมาย: <b>${name}</b><br>ระยะทางที่เหลือ: <b>${distanceText}</b><br>ใช้เวลาเดินประมาณ: <b>${timeMinutes || 1} นาที</b>`;
+                });
+
+            } else {
+                // กรณีเปิดในคอมพิวเตอร์ที่ไม่มี GPS หรือยังไม่ได้อนุญาตสิทธิ์ตำแหน่ง
+                alert(`ปักหมุดตึกเรียบร้อย! แต่หากต้องการใช้งานระบบ "ลากเส้นนำทางสีฟ้า" และ "คำนวณระยะทางกิโลเมตร" โปรดเปิดใช้งานระบบเว็บนี้ผ่านโทรศัพท์มือถือและกดยอมรับสิทธิ์อนุญาต GPS ด้วยนะครับ`);
+            }
             
-            // บนมือถือเมื่อกดตึกแล้ว ให้ซ่อนเมนูอัตโนมัติเพื่อแสดงแผนที่
+            // หากเปิดบนมือถือจอกว้างไม่มาก พอกดเลือกตึกแล้วให้หุบเมนูไปอัตโนมัติ จะได้เห็นเส้นทางเต็มจอ
             if (window.innerWidth < 768) {
                 toggleSidebar();
             }
@@ -283,10 +331,10 @@
             const icon = toggleBtn.querySelector('i');
             if (sidebar.classList.contains('active')) {
                 icon.className = 'fas fa-times';
-                toggleBtn.style.left = '365px'; // ดันปุ่มหลบออกมาเมื่อเมนูกางออก
+                toggleBtn.style.left = '365px';
             } else {
                 icon.className = 'fas fa-bars';
-                toggleBtn.style.left = '15px'; // ดึงปุ่มกลับมาที่เดิม
+                toggleBtn.style.left = '15px';
             }
         }
 
@@ -304,38 +352,46 @@
             });
         }
 
-        // 6. ระบบ GPS ดึงตำแหน่งปัจจุบันของผู้ใช้งาน (Geolocation)
-        function onLocationFound(e) {
-            const radius = e.accuracy / 2;
+        // 6. ระบบ GPS ดึงตำแหน่งปัจจุบันและอัปเดตเมื่อเดินเคลื่อนที่
+        let userMarker = null;
 
-            // ดีไซน์หมุดตำแหน่งสีฟ้าเด่นๆ สำหรับผู้ใช้งาน
+        function onLocationFound(e) {
+            userLatLng = e.latlng; // บันทึกพิกัดจริงล่าสุดของคุณลงในระบบคีย์เวิร์ดเว็บ
+
+            // ดีไซน์หมุดสีฟ้ากระพริบสวยๆ แทนตัวผู้ใช้
             const userIcon = L.divIcon({
                 className: 'user-location-marker',
-                html: '<div style="background-color: #1a73e8; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                html: '<div style="background-color: #1a73e8; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(26,115,232,0.8);"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
             });
 
-            // ปักหมุดจุดที่คุณยืนอยู่ปัจจุบัน
-            L.marker(e.latlng, {icon: userIcon}).addTo(map)
-                .bindPopup(`คุณกำลังอยู่ตรงนี้ (รัศมีความแม่นยำประมาณ ${radius.toFixed(0)} เมตร)`).openPopup();
-
-            // ร่อนหน้าจอแผนที่ไปหาตำแหน่งที่คุณยืนอยู่ ณ ตอนนั้น
-            map.flyTo(e.latlng, 17, { animate: true, duration: 1.5 });
+            // หากเพิ่งเคยเจอตำแหน่งครั้งแรกให้ปักหมุดลงแผนที่ใหม่
+            if (!userMarker) {
+                userMarker = L.marker(e.latlng, {icon: userIcon}).addTo(map);
+                userMarker.bindPopup("คุณอยู่ตรงนี้").openPopup();
+                map.setView(e.latlng, 17); // แพนกล้องหาเราตอนเปิดแอปครั้งแรก
+            } else {
+                // หากกำลังเดินเคลื่อนที่ ให้หมุดสีฟ้าเลื่อนขยับตามพิกัดดาวเทียมปัจจุบันที่เปลี่ยนไปโดยไม่ต้องปักซ้ำซ้อน
+                userMarker.setLatLng(e.latlng);
+            }
         }
 
         function onLocationError(e) {
-            console.log("ไม่สามารถดึง GPS ได้ทันที: " + e.message);
+            console.log("สัญญาณ GPS ดึงขัดข้องชั่วคราว: " + e.message);
         }
 
-        // ผูกสิทธิ์ระบบตำแหน่งของเบราว์เซอร์เข้ากับแผนที่
         map.on('locationfound', onLocationFound);
         map.on('locationerror', onLocationError);
 
-        // สั่งให้ระบบค้นหาตำแหน่งปัจจุบันทันทีเมื่อเปิดใช้งาน
-        map.locate({setView: false, enableHighAccuracy: true});
+        // คอยอัปเดตตำแหน่ง GPS ตลอดเวลาแบบ High Accuracy เมื่อมีการเดินเคลื่อนที่ (watch: true)
+        map.locate({
+            setView: false, 
+            watch: true, 
+            enableHighAccuracy: true
+        });
 
-        // เริ่มต้นทำงานแอปพลิเคชัน
+        // เริ่มต้นรันแอปพลิเคชัน
         initApp();
     </script>
 </body>
