@@ -1,0 +1,29 @@
+:root{--ink:#14161a;--sig:#0000bf;--red:#e11d48;--bg:#f6f7f9}
+body{font-family:'Prompt',sans-serif;background:var(--bg);color:var(--ink)}
+.nav-dark{background:#1f2328}.brand{font-weight:800;letter-spacing:1px;color:var(--sig)!important}
+.nav-link.active{color:#fff!important;font-weight:600}
+.btn-sig{background:var(--sig);color:var(--ink);font-weight:600;border:0}.btn-sig:hover{background:#03f813;color:var(--ink)}
+.cart-badge{position:absolute;top:-6px;right:-6px;border-radius:999px}
+.hero{position:relative;overflow:hidden;background:linear-gradient(115deg,#14161a 55%,#2a2f36);color:#fff;border-radius:22px;padding:56px 6vw;margin-bottom:36px;display:flex;align-items:center}
+.hero::after{content:"";position:absolute;right:-60px;top:-20%;width:320px;height:140%;background:var(--sig);transform:skewX(-18deg)}
+.hero>div{position:relative;z-index:2}
+.hero-tag{display:inline-block;background:var(--sig);color:var(--ink);font-weight:700;font-size:.8rem;padding:2px 12px;border-radius:999px}
+.hero h1{font-size:clamp(2.2rem,7vw,4.2rem);font-weight:800;line-height:1;margin:14px 0}.hero p{opacity:.8}
+.hero-bolt{position:absolute;right:7vw;top:50%;transform:translateY(-50%) rotate(8deg);font-size:9rem;color:var(--ink);z-index:2}
+@media(max-width:600px){.hero-bolt{display:none}.hero::after{width:140px}}
+.shoe-card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06);transition:.2s}
+.shoe-card:hover{transform:translateY(-6px);box-shadow:0 12px 26px rgba(0,0,0,.15)}
+.shoe-img{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:#e9ecef;color:#9aa3ad;font-size:3rem;overflow:hidden}
+.shoe-img img{width:100%;height:100%;object-fit:cover;transition:.3s}.shoe-card:hover .shoe-img img{transform:scale(1.07)}
+.sold,.low{position:absolute;top:10px;left:10px;font-size:.75rem;font-weight:600;padding:2px 10px;border-radius:999px;color:#fff}
+.sold{background:#495057}.low{background:var(--red)}
+.tag{display:inline-block;background:var(--ink);color:#fff;font-size:.72rem;font-weight:600;padding:1px 10px;border-radius:6px}.tag.alt{background:#0dcaf0;color:var(--ink)}
+.shoe-name{font-size:1.05rem;font-weight:600;margin:6px 0 0}.shoe-price{color:var(--red);font-weight:800}
+.detail-img{aspect-ratio:1;background:#e9ecef;border-radius:18px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:5rem;color:#9aa3ad}
+.detail-img img{width:100%;height:100%;object-fit:cover}
+.size-group{display:flex;flex-wrap:wrap;gap:8px}
+.size-chip{min-width:52px;text-align:center;padding:8px 14px;border:2px solid #ced4da;border-radius:10px;cursor:pointer;font-weight:600;background:#fff}
+.btn-check:checked+.size-chip{background:var(--ink);color:var(--sig);border-color:var(--ink)}
+.btn-check:focus-visible+.size-chip{outline:3px solid #000000;outline-offset:2px}
+.mini{width:48px;height:48px;object-fit:cover;border-radius:8px}
+.foot{background:#1f2328;color:#cbd2d9;padding:22px 0;margin-top:40px}
